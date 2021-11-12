@@ -110,7 +110,7 @@ class Flow_network():
     for v in adj_list.copy():
       for u in adj_list[v]:
         if v in adj_list[u]:
-          prime = f"ANTIPARALLEL_V1->V2"
+          prime = f"ANTIPARALLEL_{u}->{v}"
           adj_list[u].append(prime)
           adj_list[prime] = [v]
           adj_list[u].remove(v)
