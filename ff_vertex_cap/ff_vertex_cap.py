@@ -24,7 +24,7 @@ class Vertex_prop:
 
   def __str__(self):
     return (f"Vertex_prop(color: {self.color}, d: {self.d}, pi: " + 
-      "{None if self.pi == None else self.pi.label}, label: {self.label})")
+      f"{None if self.pi == None else self.pi.label}, label: {self.label})")
 
 """
 Breadth first search with a twist: when traversing the graph, we do not explore edges with a 
@@ -211,8 +211,8 @@ def ford_fulkerson(g, s, t):
         g.V[u][v].f += cfp
       else:
         g_prime.V[v][u].f -= cfp
-        g_prime.V[u][v].c = g_prime.V[u][v].f # Update the transposed edge
-        g.V[v][u] -= cfp
+        g_prime.V[u][v].c = g_prime.V[v][u].f # Update the transposed edge
+        g.V[v][u].f -= cfp
 
     pg = bfs(g_prime, s)
 
