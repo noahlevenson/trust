@@ -56,8 +56,8 @@ class Digraph():
     for v in self.V:
       in_vertex = f"{v}_IN"
       out_vertex = f"{v}_OUT"
-      # If there's no entry for this vertex in the vertex capacities table, it's beyond the 
-      # maximum distance we set capacities for, so assign it a capacity of 0
+      # If there's no entry for this vertex in the vertex capacities table, we must assume it's
+      # unreachable from the source vertex, so assign it a capacity of 0
       cap = vcaps[v] - 1 if v in vcaps else 0
       g.add_edge(in_vertex, Edge(v=out_vertex, c=cap, vertex_id=v))
       
