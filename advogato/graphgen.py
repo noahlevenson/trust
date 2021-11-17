@@ -39,7 +39,7 @@ for name in first:
 with open("middle-names.json") as f:
   middle = json.load(f)
 
-# Map integers [0, 26] to lowercase letters such that we can fetch a letter by distance from seed
+# Map integers [0, 25] to lowercase letters such that we can fetch a letter by distance from seed
 alpha_index = dict(zip(range(len(string.ascii_lowercase)), list(string.ascii_lowercase)))
 
 if max_depth > len(string.ascii_lowercase):
@@ -47,7 +47,7 @@ if max_depth > len(string.ascii_lowercase):
 
 """
 Recursive function to generate a random graph. To generate a new graph, create a Digraph with 
-one seed vertex; pass the Digraph as 'g' and the vertex label for the seed as 'v'
+one seed vertex, then pass the Digraph as 'g' and the vertex label for the seed as 'v'
 """
 def add_children(g, v, depth=1):
   # Base case: we've reached our maximum depth, we're done here
