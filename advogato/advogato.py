@@ -1,20 +1,12 @@
 #!/usr/bin/python3
 
 """ 
-This is the Advogato trust metric, based on max flow using Ford-Fulkerson and BFS, plus some 
-fancyish tooling to make it easier to perform experiments and reason about the results. 
+This is the Advogato trust metric, based on max flow using Ford-Fulkerson and BFS.
 """
 
-import random
 import os
-import json
-import string
-import pickle
-import uuid
 from enum import IntEnum
 from functools import partial
-
-OUTPUT_DIR = "graphs"
 
 # Discovery colors for graph search algos, we don't need em but they're nice for debugging
 class COLOR(IntEnum):
@@ -219,16 +211,16 @@ def ford_fulkerson(g, s, t):
       path.append((pg[vprop.pi.label].label, vprop.label))
       vprop = vprop.pi
     
-    # Compute cfp aka the residual capacity of the path
-    cfp = float("inf")
-    
     # Print each augmenting path during the main loop...
     _ = os.system("clear")
-    print("Augmenting path: ")
+    print("Augmenting path...")
     # Reversing the path isn't necessary for correctness, but it prints nicer this way
     path.reverse()
     print(path)
-
+    
+    # Compute cfp aka the residual capacity of the path
+    cfp = float("inf")
+    
     for edge in path:
       u, v = edge
       new_cfp = res_cap(g_prime, u, v)
@@ -250,138 +242,5 @@ def ford_fulkerson(g, s, t):
         g.V[v][u].f -= cfp
 
     pg = g_prime.bfs(s, partial(_has_zero_res_cap, g))
-
-"""
-To make it easier to reason about networks, let's assign each vertex a human name. And to make it
-even easier to reason about networks, let's encode some semantics: all vertices at distance 1
-from the seed will have an 'A' name, all vertices at distance 2 will have a 'B' name, and so on.
-Here we create a dictionary where each key is a lowercase letter mapping to a list of first names...
-"""
-with open("first-names.json") as f:
-  first = json.load(f)
-
-# By combining a first name with a middle name, we expand the name space
-with open("middle-names.json") as f:
-  middle = json.load(f)
-
-names = dict(zip(list(string.ascii_lowercase), [[] for _ in range(len(string.ascii_lowercase))]))
-
-for name in first:
-  names[name[0].lower()].append(name)
-
-"""
-Hyperparameters: When considering the graph as a tree, 'max_depth' is the max distance from the
-seed at which we will generate vertices; 'max_children' is the max number of outedges each vertex
-can have (corresponding to the max number of signatures issued by that peer).
-"""
-max_depth = 8
-max_children = 4
-
-# Map depth integers 0-26 to lowercase letters
-alpha_index = dict(zip(range(len(string.ascii_lowercase)), list(string.ascii_lowercase)))
-
-if max_depth > len(string.ascii_lowercase):
-  raise ValueError(f"Things break if 'max_depth' exceeds {len(string.ascii_lowercase)}")
-
-"""
-In our early stages of experimentation, we want to observe the behaviors of simple trust graphs.
-We use this recursive function to generate a purely hierarchical trust graph with no backedges. 
-(i.e., a tree). Vertices receive human names in the manner described above.
-"""
-def add_children(g, v, depth=1):
-  # Base case: we've reached our maximum depth, we're done here
-  if depth == max_depth:
-    return
-
-  # Recursive case: add a random number of children [1, max_children]
-  n_children = random.randint(1, max_children)
   
-  for _ in range(n_children):
-    first_name = random.choice(names[alpha_index[depth - 1]])
-    middle_name = random.choice(middle)
-    child_name = f"{first_name} {middle_name}"
-    
-    # Dumb unoptimized way to avoid name collisisons
-    while child_name in g.V:
-      middle_name = random.choice(middle)
-      child_name = f"{first_name} {middle_name}"
-
-    g.add_edge(v, Edge(child_name))
-    add_children(g, child_name, depth + 1)
-
-"""
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Driver code below
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-"""
-
-# Recursively generate a graph with no backedges using the hyperparameters above
-h = Digraph()
-h.add_vertex("seed")
-add_children(h, "seed")
-
-"""
-Capacity table: capacity for distance zero is equal to the number of "good" peers in the network, 
-each successive distance is equal to the previous distance divided by the average outdegree.
-TODO: Could we/should we generate this dynamically instead?
-"""
-caps = {
-  0: 500,
-  1: 200,
-  2: 60,
-  3: 30,
-  4: 10,
-  5: 3,
-  6: 1
-}
-
-# Compute vertex capacities based on distance from the seed
-pg = h.bfs("seed")
-vcaps = dict(zip(pg.keys(), [caps[vprop.d] if vprop.d in caps else 1 for vprop in pg.values()]))
-
-# Transform to a flow network, do Ford-Fulkerson and compute trust scores
-g, new_source_label = h.to_flow_net(vcaps, "seed", "supersink")
-ford_fulkerson(g, new_source_label, "supersink")
-
-# Generate a graph ID, pickle it off and display the pertinent stuff
-graph_id = uuid.uuid4()
-output_path = f"./{OUTPUT_DIR}/{graph_id}.graph"
-
-print("\nGraph info:")
-print(f"ID: {graph_id}")
-print(f"Vertices: {len(h.V)}")
-
-n_outedges = 0
-n_vertices = 0
-
-for v in h.V:
-  outdegree = len(h.V[v])
-  
-  if outdegree > 0:
-    n_outedges += outdegree
-    n_vertices += 1
-
-print(f"Mean outdegree (not including leaf nodes): {n_outedges / n_vertices}")
-
-with open(output_path, "wb") as f:
-  pickle.dump(h, f)
-
-print(f"\nSaved to {output_path}")
-"""
-Produce a list of (u, v, vertex_id, flow) 4-tuples, sorted by flow. Here's where we put that 
-'vertex_id' property to use; we filter on it to select only the edges corresponding to vertices
-"""
-edges = [(vlabel, edge.v, edge.vertex_id, edge.f) for vlabel in g.V.keys() for edge in g.V[vlabel].values() if edge.vertex_id]
-edges.sort(reverse=True, key=lambda x: x[3])
-
-# Print top scores
-n_show = 20
-print(f"\nTop {n_show} peers by trust:")
-
-for i, edge in enumerate(edges[0:n_show]):
-  u, v, vertex_id, f = edge
-  print(f"{i + 1}. {vertex_id}, {f}")
+  print("Done!")
