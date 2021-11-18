@@ -7,7 +7,11 @@ This is a very simple testbench application. Run like so:
 
 Your graph file should be a serialized Digraph created with graphgen.py. Your experiment file 
 should be a Python script. Your experiment file is executed in the current scope, so you can access
-the Digraph using the 'h' identifier and Advogato functions using the 'advogato' identifier.
+objects using the following identifiers:
+
+advogato    the advogato.py module
+h           the original Digraph as loaded from disk, before transformation to a flow network
+g           the current state of the flow network
 """
 
 import advogato
@@ -41,6 +45,32 @@ def recompute_trust(h):
   advogato.ford_fulkerson(g, new_source_label, "supersink")
   return g
 
+"""
+Print the inedges and outedges (and corresponding flow) for flow network 'g' and original
+(pre-transformed) vertex label 'u'
+"""
+def print_vertex_info(g, u):
+  neg = advogato.Digraph.flow_net_get_vlabel_in(u)
+  inedges = []
+
+  for v in g.V:
+    if neg in g.V[v]:
+      inedges.append(f"{advogato.Digraph.flow_net_get_vlabel_orig(v)} ({g.V[v][neg].f})")    
+  
+  print(f"Vertex info for {u}...")
+  inedges = ", ".join(inedges)
+  print(f"Inedges: {inedges}")
+  
+  pos = advogato.Digraph.flow_net_get_vlabel_out(u)
+  outedges = []
+  
+  for v in g.V[pos]:
+    outedges.append(f"{advogato.Digraph.flow_net_get_vlabel_orig(v)} ({g.V[pos][v].f})") 
+  
+  outedges = ", ".join(outedges)
+  print(f"Outedges: {outedges}")
+
+# Print the top simulated peers by trust score
 def print_top(g, n_show=20):
   """
   Produce a list of (u, v, vertex_id, flow) 4-tuples, sorted by flow. Here's where we put that
@@ -77,8 +107,9 @@ def main():
   with open(graph_path, "rb") as f:
     h = pickle.load(f)
   
-  print_top(recompute_trust(h))
-  print("\n*** BEGIN TEST ***")
+  g = recompute_trust(h)
+  print_top(g)
+  print("\n*** BEGIN TEST ***\n")
   exec(open(experiment_path).read())
 
 if __name__ == "__main__":

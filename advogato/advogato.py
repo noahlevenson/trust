@@ -35,6 +35,31 @@ class Digraph():
     return "\n".join([v + ": " +  ", ".join([str(self.V[v][key]) for key in self.V[v]]) for v in self.V])
   
   """
+  A note about label transformation and how we did a bad job here: To transform a flow network from 
+  one with vertex capacities to one with edge capacities, we must convert each vertex into two 
+  vertices -- a positive vertex and a negative vertex. In doing this, we must obviously relabel the
+  vertices. Sadness occurs when trying to reason about such a transformed network; when traversing
+  the graph, we often find ourselves wanting to print the original, pre-transformed vertex labels,
+  since those are the references which the human programmer understands.
+  
+  Our late solution is to create these brittle static methods which convert back and forth between 
+  original and transformed vertex labels. However, if we were as wise yesterday as we are 
+  today, we would have not used string labels for vertices. Instead, we would have concocted some 
+  kind of rich vertex label object to store both transformed and pre-transformed label strings.
+  """
+  # Fetch the transformed label for a vertex's corresponding negative vertex
+  def flow_net_get_vlabel_in(u):
+    return f"{u} ---"
+  
+  # Fetch the transformed label for a vertex's corresponding positive vertex
+  def flow_net_get_vlabel_out(u):
+    return f"{u} +++"
+  
+  # Fetch the original label for a vertex label which has been transformed to an in or out label
+  def flow_net_get_vlabel_orig(u):
+    return u[:len(u) - 4] 
+
+  """
   Factory method to build a flow network based on the Advogato spec. 'vcaps' is a dictionary where 
   each key is a vertex label which maps to a capacity as an integer. 'source_label' is a string
   corresponding to a vertex which you should have already created. (It will get relabeled as part
@@ -46,8 +71,8 @@ class Digraph():
     g = Digraph()
 
     for v in self.V:
-      in_vertex = f"{v}_IN"
-      out_vertex = f"{v}_OUT"
+      in_vertex = Digraph.flow_net_get_vlabel_in(v)
+      out_vertex = Digraph.flow_net_get_vlabel_out(v)
       # If there's no entry for this vertex in the vertex capacities table, we must assume it's
       # unreachable from the source vertex, so assign it a capacity of 0
       cap = vcaps[v] - 1 if v in vcaps else 0
@@ -58,10 +83,10 @@ class Digraph():
         g.add_edge(in_vertex, Edge(supersink_label, 1))
 
       for u in self.V[v]:
-        g.add_edge(out_vertex, Edge(f"{u}_IN", float("inf")))
+        g.add_edge(out_vertex, Edge(Digraph.flow_net_get_vlabel_in(u), float("inf")))
     
-    return (g, f"{source_label}_IN")
-    
+    return (g, Digraph.flow_net_get_vlabel_in(source_label))
+  
   # Fix antiparallel edges per CLRS p. 711; returns a set of labels corresponding to the added vertices
   def _fix_antiparallel(self, vcaps):
     new_vertices = set()
