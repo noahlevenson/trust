@@ -57,7 +57,7 @@ def print_vertex_info(g, u):
     if neg in g.V[v]:
       inedges.append(f"{advogato.Digraph.flow_net_get_vlabel_orig(v)} ({g.V[v][neg].f})")    
   
-  print(f"Vertex info for {u}...")
+  print(f"Vertex info for {u} ({g.V[neg][advogato.Digraph.flow_net_get_vlabel_out(u)].f})...")
   inedges = ", ".join(inedges)
   print(f"Inedges: {inedges}")
   
@@ -69,6 +69,10 @@ def print_vertex_info(g, u):
   
   outedges = ", ".join(outedges)
   print(f"Outedges: {outedges}")
+
+def print_graph_info(g):
+  print("\nGraph info:")
+  print(f"Vertices: {len(g.V)}")
 
 # Print the top simulated peers by trust score
 def print_top(g, n_show=20):
@@ -108,6 +112,7 @@ def main():
     h = pickle.load(f)
   
   g = recompute_trust(h)
+  print_graph_info(g)
   print_top(g)
   print("\n*** BEGIN TEST ***\n")
   exec(open(experiment_path).read())

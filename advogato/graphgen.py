@@ -83,28 +83,13 @@ h.add_vertex("seed")
 add_children(h, "seed")
 g = tb.recompute_trust(h)
 
-# Generate a graph ID, pickle it off and display the pertinent stuff
+# Generate a graph ID and pickle it off
 graph_id = uuid.uuid4()
 output_path = f"./{OUTPUT_DIR}/{graph_id}.graph"
-
-print("\nGraph info:")
-print(f"ID: {graph_id}")
-print(f"Vertices: {len(h.V)}")
-
-n_outedges = 0
-n_vertices = 0
-
-for v in h.V:
-  outdegree = len(h.V[v])
-  
-  if outdegree > 0:
-    n_outedges += outdegree
-    n_vertices += 1
-
-print(f"Mean outdegree (not including leaf nodes): {n_outedges / n_vertices}")
 
 with open(output_path, "wb") as f:
   pickle.dump(h, f)
 
 print(f"\nSaved to {output_path}")
+tb.print_graph_info(g)
 tb.print_top(g)

@@ -4,7 +4,7 @@
 This is the Advogato trust metric, based on max flow using Ford-Fulkerson and BFS.
 """
 
-import os
+import sys
 from enum import IntEnum
 from functools import partial
 
@@ -226,6 +226,7 @@ def ford_fulkerson(g, s, t):
   g_prime = _optimize(g)
   pg = g_prime.bfs(s, partial(_has_zero_res_cap, g))
   
+  sys.stdout.write("Augmenting path")
   # Since we used BFS, the path from the source to the sink is the shortest path
   while t in pg:
     # Collect the path from s to t as a list of tuples of edge labels in reverse order
@@ -236,12 +237,8 @@ def ford_fulkerson(g, s, t):
       path.append((pg[vprop.pi.label].label, vprop.label))
       vprop = vprop.pi
     
-    # Print each augmenting path during the main loop...
-    _ = os.system("clear")
-    print("Augmenting path...")
-    # Reversing the path isn't necessary for correctness, but it prints nicer this way
-    path.reverse()
-    print(path)
+    sys.stdout.write(".")
+    sys.stdout.flush()
     
     # Compute cfp aka the residual capacity of the path
     cfp = float("inf")
